@@ -17,6 +17,8 @@ public class ManagePCHelper {
 
 	private final static int MAX_VOLUME_PERCENTAGE = 100;
 
+	private static boolean movingMouse;
+	
 	public static void leftClick(boolean down) throws AWTException {
 		Robot bot = new Robot();
 		if (down) {
@@ -51,8 +53,6 @@ public class ManagePCHelper {
 		moveMouse(p.x, p.y, p.x + x, p.y + y, speed);
 	}
 	
-	private static boolean movingMouse;
-	
 	public static void moveMouse(int sx, int sy, int ex, int ey, int speed) throws AWTException {
         Robot robot = new Robot();
         int mov_x, mov_y;
@@ -72,7 +72,6 @@ public class ManagePCHelper {
             robot.delay(realSpeed);
             i ++;
         } while ((mov_x != ex && mov_y != ey) && movingMouse);
-        System.out.println("i:"+ i + ", movingMouse:"+movingMouse);
         movingMouse = false;
     }
 	
@@ -136,5 +135,11 @@ public class ManagePCHelper {
 				String.valueOf(MAX_VOLUME_PERCENTAGE))
 				.start();
 
+	}
+
+	public static void shutdown(String time) throws IOException {
+		String urlScript = UtilsSystem.getLibFolder() + "Shutdown.sh";
+		ProcessBuilder pb = new ProcessBuilder(urlScript, time);
+		Process p = pb.start();
 	}
 }

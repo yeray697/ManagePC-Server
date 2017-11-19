@@ -17,7 +17,7 @@ public class ServerManager extends Thread {
 	private Config config;
 	private IServerStatus serverStatus;
 	private String serverIp;
-    private ArrayList<ClientConnectedThread> clientConnectedThreads;
+    private ClientConnectedThread clientConnectedThread;
     private boolean open;
     protected ServerSocket serverSocket;
     protected Socket socket;
@@ -32,13 +32,13 @@ public class ServerManager extends Thread {
 		} catch (IOException | InterruptedException e) {
 			modifyStatus(Status.customErrorStatus(e.getMessage()));
 		}
+    	this.clientConnectedThread = null;
     }
 
     public void run() {
     	try
         {
         	Logger.println("Running server over port "+ config.getPort());
-        	clientConnectedThreads = new ArrayList<>();
         	serverSocket = new ServerSocket(config.getPort());
         	open = true;
             listenClients();
@@ -55,29 +55,37 @@ public class ServerManager extends Thread {
     public void closeServer() throws IOException {
 		printInfoLog("Closing server");
     	open = false;
-    	for (ClientConnectedThread clientConnectedThread : clientConnectedThreads) {
-			clientConnectedThread.closingSocket();
-		}
+    	if (clientConnectedThread != null) {
+    		clientConnectedThread.closingSocket();
+        	clientConnectedThread = null;
+    	}
     	serverSocket.close();
-    	clientConnectedThreads = new ArrayList<>();
 		printInfoLog("Closed server");
     }
     
     public void listenClients() {
 
-		printLog(Status.LISTENING);
-    	ClientConnectedThread clientConnectedThread;
-        try {
-        	socket = serverSocket.accept();
-        	Logger.println("Client accepted: " + socket.getInetAddress() + ":"+socket.getPort());
-        	clientConnectedThread = new ClientConnectedThread(socket);
-            clientConnectedThreads.add(clientConnectedThread);
-            clientConnectedThread.start();
-    		printLog(Status.CONNECTED);
-        } catch (IOException e) {
-        	if (open)
-        		printErrorLog("I/O error: " + e.getMessage());
-        }
+		while (open) {
+			if (clientConnectedThread == null || clientConnectedThread.isValidPass() == 0 || !clientConnectedThread.isAlive()) {
+				if (clientConnectedThread == null) {
+					printLog(Status.LISTENING);
+				} else if (clientConnectedThread.isValidPass() == 0) {
+					printInfoLog("Contraseña incorrecta. Esperando cliente...");
+				} else if (!clientConnectedThread.isAlive()) {
+					printInfoLog("Cliente desconectado. Esperando cliente...");
+				}
+				try {
+		        	socket = serverSocket.accept();
+		        	Logger.println("Client accepted: " + socket.getInetAddress() + ":"+socket.getPort());
+		        	clientConnectedThread = new ClientConnectedThread(socket, config.getPass(), serverStatus);
+		            clientConnectedThread.start();
+		    		printLog(Status.CONNECTED);
+		        } catch (IOException e) {
+		        	if (open)
+		        		printErrorLog("I/O error: " + e.getMessage());
+		        }
+			}
+		}
     }
 
     public String getIp() {
